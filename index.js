@@ -16,6 +16,60 @@ const session = axios.create({headers: {
 
 //const TEST_URL = "https://finance.yahoo.com/quote/JIOFIN.BO?p=JIOFIN.BO&.tsrc=fin-srch";
 
+app.get('/status', async (req, res) => {
+    res.json({status: "API is live"});
+});
+app.get('/', async (req, res) => {
+    res.json({status: "API is live"});
+});
+
+app.get('/stockdata', async (req, res) => {
+    const stockLink = req.get('X-Stock-Link'); // Read stock link from the custom header
+    try {
+        const x= await getData(stockLink);
+        // Respond with the JSON data
+        res.json(x);
+    } catch (error){
+        
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.get('/stockdata/:exchange/:name', async (req, res) => {
+    // Read stock name and exchange from the URL
+    const name = req.params.name;
+    let exchange = req.params.exchange;
+    //Sample Google Link:https://www.google.com/finance/quote/RELIANCE:NSE?hl=en
+    //Sample Yahoo Link: https://finance.yahoo.com/quote/RELIANCE.NS
+    if (exchange=='BSE'){exchange = 'BOM'}
+    const googleLink = `https://www.google.com/finance/quote/${name}:${exchange}?hl=en`;
+    const yahooLink =   `https://finance.yahoo.com/quote/${name}.${exchange.slice(0,2)}`
+    //console.log(googleLink);
+    //console.log(yahooLink);
+    try {
+        const x= await getDataGoogle(googleLink);
+        if(x.Name==''){throw {status:"Google Fin Failed"};}
+        res.json(x);
+    }catch(e1){
+        try{
+            const y= await getDataYahoo(yahooLink);
+            res.json(y);
+        }catch (e2){
+            console.error(e2);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
+});
+
+
+
+
+
+
+
+
+
 async function getDataGoogle(URL){
     const response = await session.get(URL);
     const $ = cheerio.load(response.data);
@@ -89,22 +143,3 @@ async function getData(URL){
 //     console.log(x);
 // }
 // returnedData(TEST_URL);
-
-app.get('/stockdata', async (req, res) => {
-    const stockLink = req.get('X-Stock-Link'); // Read stock link from the custom header
-    // console.log(stockLink); 
-
-    try {
-        const x= await getData(stockLink);
-        // Respond with the JSON data
-        res.json(x);
-    } catch (error){
-        
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-app.get('/status', async (req, res) => {
-    const x = {status: "API is live"}
-    res.json(x);
-});
